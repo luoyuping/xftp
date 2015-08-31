@@ -1,0 +1,13 @@
+/*
+!/src/
+!/include/
+!/doc/
+!xftp.conf
+!Makefile
+**/*.*~
+!.gitignore
+!README.md
+
+
+
+
