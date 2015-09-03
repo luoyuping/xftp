@@ -1,11 +1,12 @@
 #include "xftp.h"
-#include "status.h"
+#include "reply_message.h"
 /*
  *定义全局变量的资源文件
  * 避免链接时，出现二义性
  */
 
 // 发送给客户端的消息
+// 响应代码
 char *ftp_send_msg[] = {
 /*   0  */	"150 File status okay; about to open data connection.\r\n",
 /*   1  */	"200 Succeed to create data connection.\r\n",
@@ -28,6 +29,7 @@ char *ftp_send_msg[] = {
 /*  18  */	"503 You have already logged in.\r\n",
 /*  19  */	"530 Login incorrect.\r\n",
 /*  20  */	"530 Please login with USER and PASS.\r\n",
-/*  21  */	"550 Permission denied.\r\n"
+/*  21  */	"550 Permission denied.\r\n",
+/*  22  */	"215 linux.\r\n"
 };
 

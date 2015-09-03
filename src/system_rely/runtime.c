@@ -1,16 +1,16 @@
 #include "xftp.h"
 
 // 客户连接的数据缓冲区指针
-xftp_buffer_t *conn_buff_global;
+/*xftp_buffer_t *conn_buff_global;*/
 
 // 线程池指针
 thread_pool_t *thread_pool_global;
 
 // 为客户连接的数据缓冲区申请内存
-static bool xftp_malloc_buff();
+/*static bool xftp_malloc_buff();*/
 
 // 为客户连接的数据缓冲区释放内存
-static bool xftp_free_buff();
+/*static bool xftp_free_buff();*/
 
 // 初始化运行状态
 bool xftp_init()
@@ -39,10 +39,11 @@ bool xftp_init()
 	printf(" Started\n\nWaiting ...\n\n");
 #endif
 	// 为客户连接的数据缓冲区申请内存
-	if (!xftp_malloc_buff()) {
-		xftp_print_info(LOG_ERR, "Alloc Buff Memery Error!");
-		return false;
-	}
+    // update: 用户内存的模型更新 
+	/*if (!xftp_malloc_buff()) {*/
+		/*xftp_print_info(LOG_ERR, "Alloc Buff Memery Error!");*/
+		/*return false;*/
+	/*}*/
 	
 	// 初始化线程池
 	if ((thread_pool_global = thread_pool_init(THREAD_POOL_SIZE, THREAD_POOL_SIZE)) == NULL) {
@@ -57,21 +58,13 @@ bool xftp_init()
 void xftp_destroy()
 {
 	// 释放线程数据接收缓存
-	xftp_free_buff();
+	/*xftp_free_buff();*/
 
 	// 释放线程池资源
 	thread_pool_destroy(thread_pool_global);
 }
 
-// 为客户连接的数据缓冲区申请内存
 /*
-typedef struct  xftp_buffer {
-    char *buff;
-    int  size;
-    int  len;
-}xftp_buffer_t;
-*/
-
 static bool xftp_malloc_buff()
 {
 	conn_buff_global = (xftp_buffer_t *)malloc(sizeof(xftp_buffer_t) * MAX_CONNECT_SIZE);
@@ -103,17 +96,17 @@ static bool xftp_free_buff()
     free(conn_buff_global);
     return true;
 }
-
+*/
 // 重置一个数据缓冲区
-bool xftp_reset_one_buff(xftp_buffer_t *buff)
-{
-	if (buff != NULL) {
-		buff->len = 0;
-		return true;
-	}
+/*bool xftp_reset_one_buff(xftp_buffer_t *buff)*/
+/*{*/
+	/*if (buff != NULL) {*/
+		/*buff->len = 0;*/
+		/*return true;*/
+	/*}*/
 
-	return false;
-}
+	/*return false;*/
+/*}*/
 
 // 增大一个数据缓冲区
 bool xftp_resize_one_buff(xftp_buffer_t *buff)
@@ -151,3 +144,28 @@ void xftp_print_time()
 	printf("%02d/%02d/%02d ", 1900 + p->tm_year, 1 + p->tm_mon, p->tm_mday);
 	printf("%s %02d:%02d:%02d", wday[p->tm_wday], p->tm_hour, p->tm_min, p->tm_sec);
 }
+
+
+// update
+
+xftp_buffer_t* get_buff_for_client()
+{
+    char* buff = (char*) malloc(BUFF_LENGTH);
+    xftp_buffer_t* tcp_buff = (xftp_buffer_t*) malloc(sizeof(xftp_buffer_t));
+    tcp_buff->size = BUFF_LENGTH;
+    tcp_buff->buff = buff;
+    tcp_buff->len = 0;
+    if (tcp_buff->buff == NULL) {
+        return NULL;
+    }
+    return tcp_buff; 
+    
+}
+
+int free_buff_for_client(xftp_buffer_t* tcp_buff)
+{ 
+    free(tcp_buff->buff); 
+    free(tcp_buff);
+    return 1;
+}
+
