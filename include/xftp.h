@@ -28,7 +28,7 @@
 #include "rio.h"
 #include "log.h"
 #include "ftp.h"
-#include "status.h"
+#include "reply_message.h"
 #include "parse_cmd.h"
 #include "do_cmd.h"
 
@@ -50,7 +50,7 @@
 
 // 默认线程池大小
 #ifdef  FTP_DEBUG
-    #define THREAD_POOL_SIZE 2
+    #define THREAD_POOL_SIZE 3
 #else 
     #define THREAD_POOL_SIZE 10
 #endif

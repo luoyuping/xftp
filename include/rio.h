@@ -13,8 +13,7 @@
 #  define unlikely(x)	(__builtin_constant_p(x) ? !!(x) : __branch_check__(x, 0))
 # endif
 
-// RIO 无缓冲的 I/O 函数
-size_t rio_readn(int fd, void *usrbuf, size_t n);
-size_t rio_writen(int fd, void *usrbuf, size_t n);
+size_t io_readn(int fd, void *usrbuf, size_t n);
+size_t io_writen(int fd, void *usrbuf, size_t n);
 
 #endif // RIO_H_
