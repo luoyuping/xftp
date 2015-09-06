@@ -1,6 +1,6 @@
 #ifndef FTP_H_
 #define FTP_H_
-
+#include "config.h" 
 // 用户名长度
 #define USER_NAME_LEN 20
 
@@ -11,8 +11,10 @@ typedef struct user_env
 	char user_name[USER_NAME_LEN];		// 登录的用户名
 	int passive_on;			         // 数据传输的模式
 	int conn_fd;				//服务端的套接字
-	int data_fd;				// 数据的位置
+	int data_fd;				//数据传输的套接字
+    int data_listen_fd;          // 数据传输的监听套接字
     char filetype;
+    char user_path[MAX_PATH];
 }user_env_t;
 
 

@@ -7,6 +7,7 @@
 
 #define BUF_SIZE 1024
 #define KEY_SIZE 50
+#define IP_LENGTH 16
 
 // 全局配置定义
 typedef struct xftp_config
@@ -16,11 +17,14 @@ typedef struct xftp_config
 	int max_clients; 		// 允许的最大客户数目与线程池上限
 	int thread_pool_size; 		// 默认的线程池大小
 	int thread_pool_add_size; 	// 线程池每次增加大小
-	unsigned short ftp_port; 	// FTP使用的端口号
+	//unsigned short ftp_port; 	// FTP使用的端口号
 	bool anonymous_enable; 		// 是否允许匿名登录
 	bool upload_enable;		// 是否允许上传
 	bool download_enable;		// 是否允许下载
 	unsigned int local_umask; 	// 上传文件权限
+    //int connfd;
+    char ip[IP_LENGTH];
+    int port;
 }xftp_config_t;
 
 // 全局配置声明

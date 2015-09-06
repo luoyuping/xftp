@@ -13,8 +13,8 @@ bool xftp_read_config()
 #endif
     FILE *config_stream;
     char read_buff[BUF_SIZE];
-    char key[KEY_SIZE];
-    char value[KEY_SIZE];
+    char key[KEY_SIZE];  // 50
+    char value[2*KEY_SIZE]; // 100
 
     // 简单处理下配置文件
     if ((config_stream = fopen(config_file, "r")) == NULL) {
@@ -53,6 +53,14 @@ bool xftp_read_config()
                     } else {
                         config_global.log_enable = false;
                     }
+                } else if (strcmp("ip_addr", key) == 0)
+                {
+                    bzero(config_global.ip,IP_LENGTH);
+                    strcpy(config_global.ip, value);
+                }
+                else if(strcmp("port",key) == 0)
+                {
+                    config_global.port = atoi(value);
                 }
             }
         }
@@ -76,7 +84,7 @@ bool xftp_read_config()
     config_global.max_clients = MAX_CONNECT_USER; 			// 允许的最大客户数目与线程池上限
     config_global.thread_pool_size = THREAD_POOL_SIZE; 		// 默认的线程池大小
     config_global.thread_pool_add_size = THREAD_POOL_ADD_SIZE; 	// 线程池每次增加大小
-    config_global.ftp_port = SERV_PORT; 				// FTP使用的端口号
+    /*config_global.port = SERV_PORT; 				// FTP使用的端口号*/
     config_global.local_umask = 22; 				// 上传文件权限
 
     return true;

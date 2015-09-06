@@ -10,7 +10,16 @@ void *xftp_thread_job_entry(void *arg)
     user_env.conn_fd =((int)arg); // 这里传过来的是int类型的fd，而不是fd的地址，是很有讲究的，看看主线程的函数栈就会明白,黑科技，@_@
     user_env.is_login_in = 0;  // false
     user_env.passive_on = 1;  //数据传输的模式:主动模式，被动模式，单端口模式,默认开启被动模式
-    user_env.data_fd = 0;  // 进行数据传输的套接字
+    user_env.data_fd = -1;  // 进行数据传输的套接字
+    user_env.data_listen_fd = -1;
+    bzero(user_env.user_path,MAX_PATH);
+    // 先读取config_global 中默认的目录
+    strncpy(user_env.user_path,config_global.ftp_path,strlen(config_global.ftp_path));   
+
+#ifdef FTP_DEBUG
+    printf("the user default working path is:%s",user_env.user_path);
+#endif
+
 
     xftp_buffer_t* tcp_buff = get_buff_for_client();
     if(tcp_buff == NULL)
@@ -70,7 +79,14 @@ void *xftp_thread_job_entry(void *arg)
     /*_barrier();  // 目前没有搞懂 这是要干啥*/
 
     // 所有的套接字关闭全部由状态机轮转到此处
-    close(user_env.conn_fd);
+    if(user_env.conn_fd > 0)
+    {   
+        close(user_env.conn_fd);
+    }
+    if(user_env.data_listen_fd > 0)
+    {
+       close(user_env.data_listen_fd);
+    }
     free_buff_for_client(tcp_buff); // 释放内存
 
 #ifdef FTP_DEBUG

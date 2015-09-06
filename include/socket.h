@@ -4,6 +4,5 @@
 // 主要是给do_pasv()/do_port() 使用
 
 int data_socket_init();
-
-
+int get_data_sockfd(int listenfd);
 #endif

@@ -41,7 +41,7 @@ static char *ftp_command[] = {
 
 client_state_t xftp_parse_cmd(user_env_t *user_env, xftp_buffer_t *tcp_buf)
 {
-	ftp_cmd_t recv_cmd;
+	ftp_cmd_t recv_cmd;  // 解析后的结果放在这～ 
 	int cmd_index = xftp_anaylse_buff(&recv_cmd, tcp_buf);
 
     // 未登录的时候拒绝一切非登录指令  
@@ -88,6 +88,11 @@ client_state_t xftp_parse_cmd(user_env_t *user_env, xftp_buffer_t *tcp_buf)
 int xftp_anaylse_buff(ftp_cmd_t *recv_cmd, xftp_buffer_t *tcp_buf)
 {
     // 命令行中空格的位置
+#ifdef FTP_DEBUG
+    bzero(recv_cmd->cmd,strlen(recv_cmd->cmd));
+    bzero(recv_cmd->arg,strlen(recv_cmd->arg));
+#endif
+
     int blank_index = 0;
     // 最短的命令 + '\n' 也有 4 字节
     if (tcp_buf->len < 4) {

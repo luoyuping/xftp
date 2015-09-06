@@ -26,4 +26,7 @@ extern char* ftp_send_msg[];
 #define   FTP_E_PERMISSION  	21  	// 550 Permission denied.
 #define   FTP_SYSTEM_TYPE       22     //	"215 linux.\r\n"
 #define   FTP_E_ARGS       23     //	504 无效的参数
+#define   FTP_E_PASV       24     // 202  命令没有生效
+#define   FTP_E_OPEN_CONN  25     //425 无法打开链接
+#define   FTP_S_SENDDATA_OVER  26     // 226 send data over 
 #endif 	// STATUS_H_

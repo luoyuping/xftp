@@ -21,8 +21,12 @@ bool xftp_accept_client()
 
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(config_global.ftp_port);
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_port = htons(config_global.port);
+    /*server_addr.sin_addr.s_addr = htonl(INADDR_ANY); // 0.0.0.0*/
+    inet_pton(AF_INET,config_global.ip,&server_addr.sin_addr);
+#ifdef FTP_DEBUG
+    printf("the server  ip :%s, port:%d\n",config_global.ip,config_global.port);
+#endif
 
     if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         xftp_print_info(LOG_ERR, "Bind Scoket Error!");
@@ -35,7 +39,6 @@ bool xftp_accept_client()
     }
 
     socklen_t client_addr_len = sizeof(client_addr);
-
     while (true) {
         bzero(&client_addr, sizeof(client_addr));
         accept_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_addr_len);

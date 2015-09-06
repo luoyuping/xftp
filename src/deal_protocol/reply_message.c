@@ -31,6 +31,9 @@ char *ftp_send_msg[] = {
 /*  20  */	"530 Please login with USER and PASS.\r\n",
 /*  21  */	"550 Permission denied.\r\n",
 /*  22  */	"215 linux.\r\n",
-/*  23  */  "504 useless argument \r\n"
+/*  23  */  "504 useless argument.\r\n",
+/*  24  */  "202 you hava already set  to pasv mode.\r\n ",
+/*  25  */  "425 can not open the connnect.\r\n",
+/*  26  */  "226 data transfer ends.\r\n"
 };
 

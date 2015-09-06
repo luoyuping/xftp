@@ -19,7 +19,9 @@
 #include <errno.h>
 #include <syslog.h>
 #include <fcntl.h>
-
+#include <dirent.h>
+#include <pwd.h> 
+#include <grp.h> 
 #include "types.h"
 #include "connect.h"
 #include "thread_pool.h"
@@ -32,6 +34,7 @@
 #include "parse_cmd.h"
 #include "do_cmd.h"
 #include "socket.h"
+#include "support_ls.h"
 
 // 服务器名称
 #define SERVER_NAME "xftp Server"
