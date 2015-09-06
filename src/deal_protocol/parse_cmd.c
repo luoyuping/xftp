@@ -3,7 +3,6 @@
 
 // 标准 FTP 服务器 支持的命令(按照本程序支持的先后顺序排序)
 // 总共33 条命令
-//
 static char *ftp_command[] = {
 /*    0   */		"USER", 	// 登录的用户名
 /*    1   */		"PASS", 	// 密码
@@ -40,61 +39,35 @@ static char *ftp_command[] = {
 /*   32   */		"STAT" 		// 在当前程序或目录上返回信息
 };
 
-// 解析读取到的内容
-// 这个函数可以做用户登陆状态的检查
-// 执行相应的命令前，做一些条件的判断
-// 这非常关键,检查没有问题时，才去做相应的动作......
 client_state_t xftp_parse_cmd(user_env_t *user_env, xftp_buffer_t *tcp_buf)
 {
 	ftp_cmd_t recv_cmd;
 	int cmd_index = xftp_anaylse_buff(&recv_cmd, tcp_buf);
 
     // 未登录的时候拒绝一切非登录指令  
-    // 做用户状态的检查
     // cmd_index = 0 用户验证
     // cmd_index = 2 用户退出
-    if (cmd_index != 0 && cmd_index != 2 && user_env->is_login_in == false) 
+    if ((user_env->is_login_in == false) && (cmd_index != 0) ) 
     {  
         if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_NO_USER_PASS])) {
             xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-            return state_close;
         }
-        // 已登录遭遇位置指令回复无法识别
+        return state_close;
     }
-    else if (cmd_index == -1 && user_env->is_login_in == true) 
+    // 已登录遭遇位置指令回复无法识别
+    else if ((user_env->is_login_in == true) && (cmd_index == -1) ) 
     {
         if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_UNKNOW_CMD])) {
             xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-            return state_close;
         }
-        // 请求登录或者已登录发送命令
+        return state_close; // 可以考虑return state_login
     }
+    // 请求登录或者已登录发送命令
     else
     {
         // 通过索引调用指令处理函数,指令处理函数设置为三种返回值,cmd_state 
-        int cmd_state = do_cmd_func[cmd_index](user_env, &recv_cmd,(void*)tcp_buf);  // 通过函数指针数组索引到函数，并传入两个参数
-        // 用户请求退出
-        if (cmd_state == -1) {
-            if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_BYE])) {
-                xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-            }
-            return state_close;
-            // 权限不允许 ,ftp 支持，但我没有实现
-        } else if (cmd_state == 2) {
-            if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_PERMISSION])) {
-                xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-                return state_close;
-            }
-        }
-        // 指令出错在指令处理函数里发送错误
-        else if(cmd_state == 0)
-        {
-            return state_close;
-        }
-        else    // cmd_state == 1
-        {
-            return state_login;
-        }
+        client_state_t cmd_state = do_cmd_func[cmd_index](user_env, &recv_cmd,(void*)tcp_buf);  // 通过函数指针数组索引到函数，并传入两个参数
+        return cmd_state;
     }
 }
 
@@ -114,71 +87,69 @@ client_state_t xftp_parse_cmd(user_env_t *user_env, xftp_buffer_t *tcp_buf)
 
 int xftp_anaylse_buff(ftp_cmd_t *recv_cmd, xftp_buffer_t *tcp_buf)
 {
-	// 命令行中空格的位置
-	int blank_index = 0;
+    // 命令行中空格的位置
+    int blank_index = 0;
+    // 最短的命令 + '\n' 也有 4 字节
+    if (tcp_buf->len < 4) {
+        return -1;
+    }
+    bool has_arg = true;
 
-	// 最短的命令 + '\n' 也有 4 字节
-	if (tcp_buf->len < 4) {
-		return -1;
-	}
-
-	bool has_arg = true;
-
-	// 格式不正确不考虑粘包处理,直接反馈无法识别
-	// 命令 3-4 个字节
-	if (tcp_buf->buff[3] == ' ') {
-		blank_index = 3;
-	} else if (tcp_buf->buff[4] == ' ') {
-		blank_index = 4;
-	} else { // 下面处理没有参数的情况
-		if (tcp_buf->buff[3] == '\r' || tcp_buf->buff[3] == '\n') {
-			blank_index = 3;  // 这里不要将has_arg 置为false吗？
+    // 格式不正确不考虑粘包处理,直接反馈无法识别
+    // 命令 3-4 个字节
+    if (tcp_buf->buff[3] == ' ') {
+        blank_index = 3;
+    } else if (tcp_buf->buff[4] == ' ') {
+        blank_index = 4;
+    } else { // 下面处理没有参数的情况
+        if (tcp_buf->buff[3] == '\r' || tcp_buf->buff[3] == '\n') {
+            blank_index = 3;  // 这里不要将has_arg 置为false吗？
             has_arg = false ;// 我的想法是这需要
-		} else if (tcp_buf->buff[4] == '\r' || tcp_buf->buff[4] == '\n') {
-			blank_index = 4;
-			has_arg = false;
-		} else {
-			return -1;
-		}
-	}
+        } else if (tcp_buf->buff[4] == '\r' || tcp_buf->buff[4] == '\n') {
+            blank_index = 4;
+            has_arg = false;
+        } else {
+            return -1;
+        }
+    }
 
-	// 拷贝命令
-	strncpy(recv_cmd->cmd, tcp_buf->buff, blank_index);
-	recv_cmd->cmd[blank_index] = '\0';
-    
+    // 拷贝命令
+    strncpy(recv_cmd->cmd, tcp_buf->buff, blank_index);
+    recv_cmd->cmd[blank_index] = '\0';
+
     // 处理参数 
-	if (has_arg) {
-		// 拷贝参数，按照惯例支持 \r\n 和 \n
-		if (tcp_buf->buff[tcp_buf->len-2] == '\r' && tcp_buf->buff[tcp_buf->len-1] == '\n') {
-			strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-1);
-			recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';
-		} else if (tcp_buf->buff[tcp_buf->len-1] == '\n') {
-			strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-2);
-			recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';
-		} else {
-			// 命令没读取完，此时最好应该判断是否断包
-			return -1;
-		}
-	}
+    if (has_arg) {
+        // 拷贝参数，按照惯例支持 \r\n 和 \n
+        if (tcp_buf->buff[tcp_buf->len-2] == '\r' && tcp_buf->buff[tcp_buf->len-1] == '\n') {
+            strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-1);
+            recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';
+        } else if (tcp_buf->buff[tcp_buf->len-1] == '\n') {
+            strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-2);
+            recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';
+        } else {
+            // 命令没读取完，此时最好应该判断是否断包
+            return -1;
+        }
+    }
 
 #ifdef FTP_DEBUG
-	printf("Debug Info : A Client Send A Command. cmd : %s  arg : %s\n", recv_cmd->cmd, recv_cmd->arg);
+    printf("Debug Info : A Client Send A Command. cmd : %s  arg : %s\n", recv_cmd->cmd, recv_cmd->arg);
 #endif
     /*
-	// 命令字母转换到大写
-	int i;
-	for (i = 0; i < MAX_CMD; i++) {
-		recv_cmd->cmd[i] &= 0x5F;
-	}
-*/
-	// 比较参数并返回索引
-	int index;
-	for (index = 0; index < MAX_FTP_COMMAND; index++) {
-		if (strcmp(ftp_command[index], recv_cmd->cmd) == 0) {
-			return index;
-		}		
-	}
+    // 命令字母转换到大写
+    int i;
+    for (i = 0; i < MAX_CMD; i++) {
+    recv_cmd->cmd[i] &= 0x5F;
+    }
+    */
+    // 比较参数并返回索引
+    int index;
+    for (index = 0; index < MAX_FTP_COMMAND; index++) {
+        if (strcmp(ftp_command[index], recv_cmd->cmd) == 0) {
+            return index;
+        }		
+    }
 
-	return -1;
+    return -1;
 }
 

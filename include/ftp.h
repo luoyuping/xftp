@@ -1,6 +1,21 @@
 #ifndef FTP_H_
 #define FTP_H_
 
+// 用户名长度
+#define USER_NAME_LEN 20
+
+// 用户登录服务器的环境变量
+typedef struct user_env
+{
+	int is_login_in;			// 是否已经登录
+	char user_name[USER_NAME_LEN];		// 登录的用户名
+	int passive_on;			         // 数据传输的模式
+	int conn_fd;				//服务端的套接字
+	int data_fd;				// 数据的位置
+    char filetype;
+}user_env_t;
+
+
 // 定义单用户连接过程中可能的各个状态
 typedef enum client_state {
 	state_conn      = 0, 	// 刚连接

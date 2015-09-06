@@ -30,6 +30,7 @@ char *ftp_send_msg[] = {
 /*  19  */	"530 Login incorrect.\r\n",
 /*  20  */	"530 Please login with USER and PASS.\r\n",
 /*  21  */	"550 Permission denied.\r\n",
-/*  22  */	"215 linux.\r\n"
+/*  22  */	"215 linux.\r\n",
+/*  23  */  "504 useless argument \r\n"
 };
 

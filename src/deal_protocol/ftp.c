@@ -9,8 +9,8 @@ void *xftp_thread_job_entry(void *arg)
     user_env_t user_env;
     user_env.conn_fd =((int)arg); // 这里传过来的是int类型的fd，而不是fd的地址，是很有讲究的，看看主线程的函数栈就会明白,黑科技，@_@
     user_env.is_login_in = 0;  // false
-    user_env.passive_on = 0;
-    user_env.data_fd = 0;
+    user_env.passive_on = 1;  //数据传输的模式:主动模式，被动模式，单端口模式,默认开启被动模式
+    user_env.data_fd = 0;  // 进行数据传输的套接字
 
     xftp_buffer_t* tcp_buff = get_buff_for_client();
     if(tcp_buff == NULL)
@@ -27,7 +27,7 @@ void *xftp_thread_job_entry(void *arg)
     // 只要用户不处于已退出状态就保持状态机循环
     while (client_state != state_close) {
         switch (client_state) {
-            case state_conn:
+            case state_conn:   // 这个状态好像就是为了发欢迎登录的信息
                 if (!xftp_send_client_msg(user_env.conn_fd, ftp_send_msg[FTP_WELCOME])) {
                     xftp_print_info(LOG_INFO, "Write Data To Client Error!");
                     client_state = state_close;
@@ -51,13 +51,13 @@ void *xftp_thread_job_entry(void *arg)
                 // 解析读取的内容
                 client_state = xftp_parse_cmd(&user_env, tcp_buff);
                 break;
-            case state_quit:
-                if (!xftp_send_client_msg(user_env.conn_fd, ftp_send_msg[FTP_BYE])) {
-                    xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-                    return NULL;
-                }
-                client_state = state_close;
-                break;
+            /*case state_quit:  // 这个状态是死状态，并没有鸟用  ? */
+                /*if (!xftp_send_client_msg(user_env.conn_fd, ftp_send_msg[FTP_BYE])) {*/
+                    /*xftp_print_info(LOG_INFO, "Write Data To Client Error!");*/
+                    /*return NULL;*/
+                /*}*/
+                /*client_state = state_close;*/
+                /*break;*/
             default:
                 break;
         }

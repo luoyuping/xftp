@@ -31,6 +31,7 @@
 #include "reply_message.h"
 #include "parse_cmd.h"
 #include "do_cmd.h"
+#include "socket.h"
 
 // 服务器名称
 #define SERVER_NAME "xftp Server"

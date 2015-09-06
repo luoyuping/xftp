@@ -24,17 +24,6 @@ extern char* ftp_send_msg[];
 #define   FTP_E_LOGIN		19  	// 530 Login incorrect.
 #define   FTP_E_NO_USER_PASS 	20  	// 530 Please login with USER and PASS.
 #define   FTP_E_PERMISSION  	21  	// 550 Permission denied.
-#define   FTP_SYSTEM_TYPE       22
-// 用户名长度
-#define USER_NAME_LEN 20
-
-// 用户登录服务器的环境变量
-typedef struct user_env
-{
-	int is_login_in;			// 是否已经登录
-	char user_name[USER_NAME_LEN];		// 登录的用户名
-	bool passive_on;			// 是否为被动模式
-	int conn_fd;				//服务端的套接字
-	int data_fd;				// 数据的位置
-}user_env_t;
+#define   FTP_SYSTEM_TYPE       22     //	"215 linux.\r\n"
+#define   FTP_E_ARGS       23     //	504 无效的参数
 #endif 	// STATUS_H_
