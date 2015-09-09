@@ -126,6 +126,7 @@ bool xftp_resize_one_buff(xftp_buffer_t *buff)
 bool xftp_chdir()
 {
 	if (chdir(config_global.ftp_path) == -1) {
+        perror("error while call chdir:\n");
 		return false;
 	}
 
