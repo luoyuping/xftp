@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <pwd.h> 
 #include <grp.h> 
+#include <netinet/tcp.h> 
 #include "types.h"
 #include "connect.h"
 #include "thread_pool.h"
