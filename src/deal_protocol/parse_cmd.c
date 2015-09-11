@@ -9,7 +9,7 @@ static char *ftp_command[] = {
 /*    2   */		"QUIT", 	// 退出
 /*    3   */		"REIN", 	// 重新登录
 /*    4   */		"CWD", 		// 改变当前目录
-/*    5   */		"CDUP", 	// 返回上级目录
+/*    5   */		"CDUP", 	// 在当前程序或目录上返回信息
 /*    6   */		"RNFR", 	// 指定需要改名的原文件
 /*    7   */		"RNTO", 	// 指定需要改名的新文件名
 /*    8   */		"ABOR", 	// 取消前一指令
@@ -36,7 +36,6 @@ static char *ftp_command[] = {
 /*   29   */		"REST", 	// 指定重新下载的字节数
 /*   30   */		"SITE", 	// 由服务器提供的站点特殊参数
 /*   31   */		"SYST", 	// 返回服务器使用的操作系统
-/*   32   */		"STAT" 		// 在当前程序或目录上返回信息
 };
 
 client_state_t xftp_parse_cmd(user_env_t *user_env, xftp_buffer_t *tcp_buf)
@@ -125,9 +124,10 @@ int xftp_anaylse_buff(ftp_cmd_t *recv_cmd, xftp_buffer_t *tcp_buf)
     // 处理参数 
     if (has_arg) {
         // 拷贝参数，按照惯例支持 \r\n 和 \n
+        // 2015 09 09 20:54 这里的获取函数的参数，有问题，没有把不可见的字符清理干净,自能骂娘
         if (tcp_buf->buff[tcp_buf->len-2] == '\r' && tcp_buf->buff[tcp_buf->len-1] == '\n') {
-            strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-1);
-            recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';
+            strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-3);
+            recv_cmd->arg[tcp_buf->len-blank_index-2] = '\0';
         } else if (tcp_buf->buff[tcp_buf->len-1] == '\n') {
             strncpy(recv_cmd->arg, tcp_buf->buff+blank_index+1, tcp_buf->len-blank_index-2);
             recv_cmd->arg[tcp_buf->len-blank_index-1] = '\0';

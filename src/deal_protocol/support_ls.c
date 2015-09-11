@@ -11,7 +11,6 @@ int get_file_info(const char *filename, char buff[], size_t len) {
     struct stat st;
     if (-1 == stat(filename, &st)) 
     {       
-        /*FTPD_DEBUG("stat error: %s\n", strerror(errno));        */
         xftp_print_info(LOG_ERR,"get file information err");
         return -1;    
     } 
@@ -86,6 +85,7 @@ int ls(user_env_t* user_env,char* buff,int length)
 
     while((dent= readdir(dir)) != NULL)
     {
+        if((length-off)< 65)    break;  // 避免文件信息太多，越界
         filename = dent->d_name;
         if(filename[0] == '.')
             continue;
@@ -93,7 +93,7 @@ int ls(user_env_t* user_env,char* buff,int length)
         if(tmp= get_file_info(filename,buff+off,length-off),tmp < 0)
         {
 #ifdef FTP_DEBUG
-            printf("get file infomation error\n");
+            perror("get file infomation error\n");
 #endif
             return -1;
         }
