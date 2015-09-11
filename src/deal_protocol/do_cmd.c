@@ -1,5 +1,5 @@
 #include "xftp.h"
-#define LS_BUFF_SIZE    4096
+#define LS_BUFF_SIZE    9216
 //所有的命令执行模块
 
 
@@ -101,24 +101,18 @@ client_state_t do_syst(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 // 设置 被动模式
 client_state_t do_pasv(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 {
-    /*if(user_env->data_listen_fd != -1)   重复设置*/
-    /*{*/
-        /*if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_E_PASV]))*/
-        /*{*/
-            /*xftp_print_info(LOG_ERR,"write data to client error in do_pasv");*/
-            /*return state_close;*/
-        /*}*/
-        /*return state_login;*/
-    /*}*/
+    int server_fd;
     user_env->passive_on = 1;
     // 简历套接字，等待客户的链接，在f非20的端口
-    int server_fd= data_socket_init();  // 这种效率有点低。。。。
-    user_env->data_listen_fd = server_fd;
-    if(server_fd < 0)
-    { 
-        xftp_print_info(LOG_ERR,"create pasv listen sovket error!") ;
-        return state_close;
-    } 
+    if(user_env->data_listen_fd  < 0)
+    {
+        server_fd= data_socket_init();  // 这种效率有点低。。。。
+        user_env->data_listen_fd = server_fd;
+    }
+    else 
+    {
+        server_fd = user_env->data_listen_fd;
+    }
     // 通过这个socket 读取他的本地端绑定的ip+ port
     struct sockaddr_in datatarans_server_addr;
     socklen_t len = sizeof(datatarans_server_addr); 
@@ -142,7 +136,6 @@ client_state_t do_pasv(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
         xftp_print_info(LOG_ERR,"send data to client error while feedback to pasv commmand\n");
         return state_close;
     }     
-    user_env->passive_on = 1;// 数据传输的模式是被动模式
     return state_login;
 }
 
@@ -153,7 +146,7 @@ client_state_t do_list(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
     if(user_env->data_listen_fd == -1)
     {
         if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_E_OPEN_CONN]))
-        { 
+      { 
             xftp_print_info(LOG_ERR,"send data to client error while feedback to do_list\n");
             return state_close;
         } 
@@ -161,7 +154,7 @@ client_state_t do_list(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
     }
 
     int data_fd = get_data_sockfd(user_env->data_listen_fd);
-#ifdef FTP_DEBUG // 输出套接字的信息
+#if 0// 输出套接字的信息
     struct sockaddr_in temp;
     int len_temp  =  sizeof(temp);
     getsockname(data_fd,&temp,&len_temp);
@@ -181,13 +174,9 @@ client_state_t do_list(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
         } 
         return state_login;
     }
-
-    if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_S_FSO]))
-    { 
-        xftp_print_info(LOG_ERR,"send data to client error while feedback to do_list\n");
-        return state_close;
-    } 
-   
+    //禁用nodelay;满负荷在发送数据
+    int one = 1;
+    setsockopt(data_fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     // 进行数据的传输
     user_env->data_fd = data_fd;
     char send_data[LS_BUFF_SIZE];        
@@ -226,20 +215,24 @@ client_state_t do_list(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
         }
     }
 
+    if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_S_FSO]))
+    { 
+        xftp_print_info(LOG_ERR,"send data to client error while feedback to do_list\n");
+        return state_close;
+    } 
     if((io_writen(user_env->data_fd,send_data,len)) != len)
     {
         xftp_print_info(LOG_ERR,"send list data to client error");
         close(user_env->data_fd);
         return state_close;
     } 
-
-    close(user_env->data_fd);
-    // 发送 226 代码  
     
     if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_S_SENDDATA_OVER])) {
         xftp_print_info(LOG_INFO, "Write Data To Client Error!");
         return state_close;
     }
+    close(user_env->data_fd);  // 这就比较差劲了，客户端每次都是先调用do_pasv,然后调用do_list
+    // 发送 226 代码  
     return state_login;
 }
 
@@ -250,11 +243,11 @@ client_state_t do_type(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 #ifdef FTP_DEBUG
     printf("the file type  is:%s",cmd->arg);
 #endif
-    if(filetype == 'A')
+    if(filetype == 'A')   // ASCII 编码数据传输
     { 
         user_env->filetype = 'A'; 
     } 
-    else if(filetype == 'I')
+    else if(filetype == 'I')  // 二进制传输
     { 
         user_env->filetype = 'I'; 
     } 
@@ -281,8 +274,8 @@ client_state_t do_type(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 // 显示当前目录
 client_state_t do_pwd(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 {
-    char curr_dir[200] = {0};
-    char* pwd   = getcwd(curr_dir,200);
+    char curr_dir[MAX_PATH] = {0};
+    char* pwd   = getcwd(curr_dir,MAX_PATH);
     if(pwd == NULL)
     { 
         xftp_print_info(LOG_ERR,"getcwd error");
@@ -290,7 +283,7 @@ client_state_t do_pwd(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
     }  
     // 手动拼接字符串
     char send_buff[150] = {0};
-    sprintf(send_buff,"%d %s\r\n",257,curr_dir); 
+    sprintf(send_buff,"%d %s\r\n",250,curr_dir); 
     if((io_writen(user_env->conn_fd,send_buff,strlen(send_buff))) != strlen(send_buff))
     { 
         xftp_print_info(LOG_ERR,"send data to client error");
@@ -299,19 +292,41 @@ client_state_t do_pwd(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
     return state_login;
 }
 
-
-/*
-下面的功能没有实现
-*/
-
 // 修改当前目录
 client_state_t do_cwd(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 {
-    if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_UNKNOW_CMD])) {
+    if(cmd->arg[0] == 0)
+    {
+        if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_CWD])) {
+            xftp_print_info(LOG_INFO, "Write Data To Client Error!");
+            return state_close;
+        }
+    }
+    int ret ;
+#if 0
+    printf("the path is :%s",cmd->arg);
+#endif 
+    if((ret=chdir(cmd->arg)),ret ==-1)
+    {
+        if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_CWD])) {
+            xftp_print_info(LOG_INFO, "Write Data To Client Error!");
+            return state_close;
+        }
+        return state_login;
+    }
+    if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_S_COMMAND])) {
         xftp_print_info(LOG_INFO, "Write Data To Client Error!");
         return state_close;
     }
-         
+     
+    char curr_dir[MAX_PATH] = {0};
+    char* pwd   = getcwd(curr_dir,MAX_PATH);
+    if(pwd == NULL)
+    { 
+        xftp_print_info(LOG_ERR,"getcwd error");
+        return state_close;
+    }  
+    strncpy(user_env->user_path,curr_dir,strlen(curr_dir)+1);
     return state_login;
 }
 
@@ -326,6 +341,73 @@ client_state_t do_cdup(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
     return state_login;
 }
 
+// 下载,暂时不考虑文本模式，全部是二进制模式下载
+client_state_t do_retr(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
+{
+    if(user_env->data_listen_fd == -1)
+    {
+        if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_E_OPEN_CONN]))
+        { 
+            xftp_print_info(LOG_ERR,"send data to client error while feedback to do_retr\n");
+            return state_close;
+        } 
+        return state_login;
+    }
+    int data_fd = get_data_sockfd(user_env->data_listen_fd);
+    if(data_fd < 0)
+    {
+        if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_E_OPEN_CONN]))
+        { 
+            xftp_print_info(LOG_ERR,"send data to client error while feedback to do_list\n");
+            return state_close;
+        } 
+        return state_login;
+    }
+    //禁用nodelay;满负荷在发送数据
+    int one = 1;
+    setsockopt(data_fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+    // 做参数的验证
+    int filefd = open(cmd->arg,O_RDONLY);
+    if(filefd < 0)
+    {
+#ifdef FTP_DEBUF
+        perror("line 348:");
+#endif
+        xftp_send_client_msg(user_env->data_fd,"550 Can not open the file.\r\n");
+    }
+
+    if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_S_FSO]))
+    { 
+        xftp_print_info(LOG_ERR,"send data to client error while feedback to do_recv\n");
+        close(data_fd);
+        return state_close;
+    } 
+
+    // 开始发送
+    // 使用sendfile发送
+    struct stat stat_buf;
+    fstat(filefd,&stat_buf);
+    /*if((sendfile(data_fd,filefd,NULL,stat_buf.st_size)) != stat_buf.st_size)*/
+    /*{*/
+        /*[>xftp_send_client_msg(user_env->conn_fd,"")   <]*/
+        /*xftp_print_info(LOG_ERR,"the data is  not send comoletely  in do_recv\n");*/
+        /*close(data_fd);*/
+        /*return state_close;*/
+    /*}*/
+    sendfile(data_fd,filefd,NULL,stat_buf.st_size);
+    if(!xftp_send_client_msg(user_env->conn_fd,ftp_send_msg[FTP_S_SENDDATA_OVER]))
+    { 
+        xftp_print_info(LOG_ERR,"send data to client error while feedback to do_recv\n");
+        close(data_fd);
+        return state_close;
+    } 
+    close(data_fd);
+    return state_login;
+}
+
+/*
+下面的功能没有实现
+*/
 // 指定要改名的原文件
 client_state_t do_rnfr(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 {
@@ -408,7 +490,8 @@ client_state_t do_nlst(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 // 不支持该方式，仅支持 PASV
 client_state_t do_port(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 {
-    if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_UNKNOW_CMD])) {
+    /*if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_UNKNOW_CMD])) {*/
+    if (!xftp_send_client_msg(user_env->conn_fd, "500 please change to passive mode,now the server only support passive mode\r\n")) {
         xftp_print_info(LOG_INFO, "Write Data To Client Error!");
         return state_close;
     }
@@ -418,16 +501,6 @@ client_state_t do_port(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
 
 
 
-// 下载
-client_state_t do_retr(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
-{
-    if (!xftp_send_client_msg(user_env->conn_fd, ftp_send_msg[FTP_E_UNKNOW_CMD])) {
-        xftp_print_info(LOG_INFO, "Write Data To Client Error!");
-        return state_close;
-    }
-         
-    return state_login;
-}
 
 // 覆盖式上传
 client_state_t do_stor(user_env_t *user_env, ftp_cmd_t *cmd,void* third_par)
